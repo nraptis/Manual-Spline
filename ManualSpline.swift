@@ -11,25 +11,21 @@ class ManualSpline {
     private(set) var capacity = 0
     private(set) var count = 0
     private(set) var maxPos = Float(0.0)
-    var closed = false
+    private(set) var closed = false
     
     private var _x = [Float]()
     private var _y = [Float]()
-    
     private var manualTan = [Bool]()
-    
     private var coefXB = [Float]()
     private var coefXC = [Float]()
     private var coefXD = [Float]()
     private var coefYB = [Float]()
     private var coefYC = [Float]()
     private var coefYD = [Float]()
-    
     private(set) var inTanX = [Float]()
     private(set) var inTanY = [Float]()
     private(set) var outTanX = [Float]()
     private(set) var outTanY = [Float]()
-    
     private var delta = [Float]()
     private var temp = [Float]()
     
@@ -153,73 +149,6 @@ class ManualSpline {
                 return _y[index] + (((coefYD[index] * percent) + coefYC[index]) * percent + coefYB[index]) * percent
             }
         }
-    }
-    
-    func getControlX(_ index: Int) -> Float {
-        if count <= 0 {
-            return 0.0
-        } else if count == 1 {
-            return _x[0]
-        } else {
-            if index <= 0 {
-                return _x[0]
-            } else if index >= count {
-                if closed {
-                    return _x[0]
-                } else {
-                    return _x[count - 1]
-                }
-            } else {
-                return _x[index]
-            }
-        }
-    }
-    
-    func getControlY(_ index: Int) -> Float {
-        if count <= 0 {
-            return 0.0
-        } else if count == 1 {
-            return _y[0]
-        } else {
-            if index <= 0 {
-                return _y[0]
-            } else if index >= count {
-                if closed {
-                    return _y[0]
-                } else {
-                    return _y[count - 1]
-                }
-            } else {
-                return _y[index]
-            }
-        }
-    }
-    
-    struct ClosestControlPointResult {
-        let index: Int?
-        let distance: Float
-    }
-    
-    func closestControlPointIndex(x: Float, y: Float, distance: Float) -> ClosestControlPointResult {
-        var index = 0
-        var bestDistance = (distance * distance)
-        var bestIndex: Int?
-        while index < count {
-            let controlPointX = _x[index]
-            let controlPointY = _y[index]
-            let diffX = controlPointX - x
-            let diffY = controlPointY - y
-            let distance = diffX * diffX + diffY * diffY
-            if distance < bestDistance {
-                bestIndex = index
-                bestDistance = distance
-            }
-            index += 1
-        }
-        if bestDistance > Math.epsilon {
-            bestDistance = sqrtf(bestDistance)
-        }
-        return ClosestControlPointResult(index: bestIndex, distance: bestDistance)
     }
 }
 
