@@ -3,6 +3,12 @@ Cubic Spline where tangents are either manually or automatically computed.</br><
 
 Created from math that I scribbled down on the inside of my trapper keeper in 6th grade. It was not until age 19 that I turned it into a functioning computer program. 20 years and 15 iterations later, all the kinks are worked out.</br></br>
 
+![alt text](https://raw.githubusercontent.com/nraptis/Manual-Spline/main/spline_manual.png?raw=true)
+
+```
+![alt text](https://raw.githubusercontent.com/nraptis/Manual-Spline/main/spline_manual.png?raw=true)
+```
+
 ```
 let spline = ManualSpline()
 
