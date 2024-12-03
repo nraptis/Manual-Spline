@@ -1,8 +1,6 @@
 //
 //  ManualSpline.swift
 //
-//  Created by Nicky Taylor on 11/5/23.
-//
 
 import Foundation
 
@@ -11,21 +9,26 @@ class ManualSpline {
     private(set) var capacity = 0
     private(set) var count = 0
     private(set) var maxPos = Float(0.0)
+    private(set) var maxIndex = 0
     private(set) var closed = false
     
-    private var _x = [Float]()
-    private var _y = [Float]()
-    private var manualTan = [Bool]()
+    var _x = [Float]()
+    var _y = [Float]()
+    
+    var manualTan = [Bool]()
+    
     private var coefXB = [Float]()
     private var coefXC = [Float]()
     private var coefXD = [Float]()
     private var coefYB = [Float]()
     private var coefYC = [Float]()
     private var coefYD = [Float]()
-    private(set) var inTanX = [Float]()
-    private(set) var inTanY = [Float]()
-    private(set) var outTanX = [Float]()
-    private(set) var outTanY = [Float]()
+    
+    var inTanX = [Float]()
+    var inTanY = [Float]()
+    var outTanX = [Float]()
+    var outTanY = [Float]()
+    
     private var delta = [Float]()
     private var temp = [Float]()
     
@@ -36,6 +39,31 @@ class ManualSpline {
         _x[count] = x
         _y[count] = y
         count += 1
+    }
+    
+    // Note: You will need to re-solve() after
+    //       ever calling this.
+    func remove(at index: Int) {
+        
+        if index >= 0 && index < count {
+            
+            var loopIndex = 0
+            let ceiling = (count - 1)
+            
+            loopIndex = index
+            while loopIndex < ceiling {
+                
+                _x[loopIndex] = _x[loopIndex + 1]
+                _y[loopIndex] = _y[loopIndex + 1]
+                manualTan[loopIndex] = manualTan[loopIndex + 1]
+                inTanX[loopIndex] = inTanX[loopIndex + 1]
+                inTanY[loopIndex] = inTanY[loopIndex + 1]
+                outTanX[loopIndex] = outTanX[loopIndex + 1]
+                outTanY[loopIndex] = outTanY[loopIndex + 1]
+                loopIndex += 1
+            }
+            count -= 1
+        }
     }
     
     func updateControlPoint(at index: Int, _ x: Float, _ y: Float) {
@@ -65,6 +93,23 @@ class ManualSpline {
     
     func reserveCapacity(minimumCapacity: Int) {
         if minimumCapacity > capacity {
+            
+            _x.reserveCapacity(minimumCapacity)
+            _y.reserveCapacity(minimumCapacity)
+            manualTan.reserveCapacity(minimumCapacity)
+            coefXB.reserveCapacity(minimumCapacity)
+            coefXC.reserveCapacity(minimumCapacity)
+            coefXD.reserveCapacity(minimumCapacity)
+            coefYB.reserveCapacity(minimumCapacity)
+            coefYC.reserveCapacity(minimumCapacity)
+            coefYD.reserveCapacity(minimumCapacity)
+            inTanX.reserveCapacity(minimumCapacity)
+            inTanY.reserveCapacity(minimumCapacity)
+            outTanX.reserveCapacity(minimumCapacity)
+            outTanY.reserveCapacity(minimumCapacity)
+            delta.reserveCapacity(minimumCapacity)
+            temp.reserveCapacity(minimumCapacity)
+            
             while _x.count < minimumCapacity { _x.append(0.0) }
             while _y.count < minimumCapacity { _y.append(0.0) }
             while manualTan.count < minimumCapacity { manualTan.append(false) }
@@ -105,6 +150,7 @@ class ManualSpline {
         }
         count = 0
         maxPos = 0.0
+        maxIndex = 0
     }
     
     func getX(_ pos: Float) -> Float {
@@ -124,6 +170,26 @@ class ManualSpline {
             } else {
                 let index = Int(pos)
                 let percent = pos - Float(index)
+                return _x[index] + (((coefXD[index] * percent) + coefXC[index]) * percent + coefXB[index]) * percent
+            }
+        }
+    }
+    
+    func getX(index: Int, percent: Float) -> Float {
+        if count <= 0 {
+            return 0.0
+        } else if count == 1 {
+            return _x[0]
+        } else {
+            if index >= maxIndex {
+                if closed {
+                    return _x[0]
+                } else {
+                    return _x[count - 1]
+                }
+            } else if index < 0 {
+                return _x[0]
+            } else {
                 return _x[index] + (((coefXD[index] * percent) + coefXC[index]) * percent + coefXB[index]) * percent
             }
         }
@@ -150,20 +216,178 @@ class ManualSpline {
             }
         }
     }
-}
-
-extension ManualSpline {
+    
+    func getY(index: Int, percent: Float) -> Float {
+        if count <= 0 {
+            return 0.0
+        } else if count == 1 {
+            return _y[0]
+        } else {
+            if index >= maxIndex {
+                if closed {
+                    return _y[0]
+                } else {
+                    return _y[count - 1]
+                }
+            } else if index < 0 {
+                return _y[0]
+            } else {
+                return _y[index] + (((coefYD[index] * percent) + coefYC[index]) * percent + coefYB[index]) * percent
+            }
+        }
+    }
+    
+    func getTanY(_ pos: Float) -> Float {
+        if count <= 1 {
+            return 0.0
+        } else {
+            var index = 0
+            var percent = Float(0.0)
+            if pos >= maxPos {
+                if closed {
+                    index = 0
+                    percent = 0.0
+                } else {
+                    index = maxIndex
+                    percent = 1.0
+                }
+            } else if pos <= 0.0 {
+                index = 0
+                percent = 0.0
+            } else {
+                index = Int(pos)
+                percent = pos - Float(index)
+            }
+            let percentSquared = percent * percent
+            return 3.0 * coefYD[index] * percentSquared + 2.0 * coefYC[index] * percent + coefYB[index]
+        }
+    }
+    
+    func getTanX(_ pos: Float) -> Float {
+        if count <= 1 {
+            return 0.0
+        } else {
+            var index = 0
+            var percent = Float(0.0)
+            if pos >= maxPos {
+                if closed {
+                    index = 0
+                    percent = 0.0
+                } else {
+                    index = maxIndex
+                    percent = 1.0
+                }
+            } else if pos <= 0.0 {
+                index = 0
+                percent = 0.0
+            } else {
+                index = Int(pos)
+                percent = pos - Float(index)
+            }
+            let percentSquared = percent * percent
+            return 3.0 * coefXD[index] * percentSquared + 2.0 * coefXC[index] * percent + coefXB[index]
+        }
+    }
+    
+    func getControlX(_ index: Int) -> Float {
+        if count <= 0 {
+            return 0.0
+        } else if count == 1 {
+            return _x[0]
+        } else {
+            if index <= 0 {
+                return _x[0]
+            } else if index >= count {
+                if closed {
+                    return _x[0]
+                } else {
+                    return _x[count - 1]
+                }
+            } else {
+                return _x[index]
+            }
+        }
+    }
+    
+    func getControlY(_ index: Int) -> Float {
+        if count <= 0 {
+            return 0.0
+        } else if count == 1 {
+            return _y[0]
+        } else {
+            if index <= 0 {
+                return _y[0]
+            } else if index >= count {
+                if closed {
+                    return _y[0]
+                } else {
+                    return _y[count - 1]
+                }
+            } else {
+                return _y[index]
+            }
+        }
+    }
+    
+    struct ClosestControlPointResult {
+        let index: Int?
+        let distance: Float
+    }
+    
+    func closestControlPointIndex(x: Float, y: Float, distance: Float) -> ClosestControlPointResult {
+        var index = 0
+        var bestDistance = (distance * distance)
+        var bestIndex: Int?
+        while index < count {
+            let controlPointX = _x[index]
+            let controlPointY = _y[index]
+            let diffX = controlPointX - x
+            let diffY = controlPointY - y
+            let distance = diffX * diffX + diffY * diffY
+            if distance < bestDistance {
+                bestIndex = index
+                bestDistance = distance
+            }
+            index += 1
+        }
+        if bestDistance > Math.epsilon {
+            bestDistance = sqrtf(bestDistance)
+        }
+        return ClosestControlPointResult(index: bestIndex, distance: bestDistance)
+    }
+    
+    func readFromSpline(spline: ManualSpline) {
+        removeAll(keepingCapacity: true)
+        for index in 0..<spline.count {
+            let x = spline._x[index]
+            let y = spline._y[index]
+            addControlPoint(x, y)
+            
+            if spline.manualTan[index] {
+                manualTan[index] = true
+                inTanX[index] = spline.inTanX[index]
+                inTanY[index] = spline.inTanY[index]
+                outTanX[index] = spline.outTanX[index]
+                outTanY[index] = spline.outTanY[index]
+            }
+        }
+    }
+    
     func solve(closed: Bool) {
         self.closed = closed
         if count <= 0 {
             maxPos = 0.0
+            maxIndex = 0
         } else if count == 1 {
             maxPos = 1.0
+            maxIndex = 1
         } else {
             if closed {
                 maxPos = Float(count)
+                maxIndex = count
             } else {
                 maxPos = Float(count - 1)
+                maxIndex = (count - 1)
             }
             solve(coord: &_x, inTan: &inTanX, outTan: &outTanX, coefB: &coefXB, coefC: &coefXC, coefD: &coefXD)
             solve(coord: &_y, inTan: &inTanY, outTan: &outTanY, coefB: &coefYB, coefC: &coefYC, coefD: &coefYD)
@@ -171,8 +395,8 @@ extension ManualSpline {
     }
     
    private func solve(coord: inout [Float],
-              inTan: inout [Float], outTan: inout [Float],
-              coefB: inout [Float], coefC: inout [Float], coefD: inout [Float]) {
+                      inTan: inout [Float], outTan: inout [Float],
+                      coefB: inout [Float], coefC: inout [Float], coefD: inout [Float]) {
        if count == 1 {
            inTan[0] = 0.0
            outTan[0] = 0.0
@@ -194,7 +418,7 @@ extension ManualSpline {
                delta[i + 1] = -0.25 * delta[i]
                temp[i] = 0.25 * (3.0 * (coord[i + 1] - coord[i - 1]) - temp[i - 1])
                H = H - G * delta[i]
-               F = F - G * delta[i - 1]
+               F = F - G * temp[i - 1]
                G = -0.25 * G
                i += 1
            }
@@ -205,13 +429,14 @@ extension ManualSpline {
                inTan[_max] = -outTan[_max]
            }
            if manualTan[_max1] == false {
-               outTan[_max1] = temp[_max1] - (0.25 + delta[_max]) * outTan[_max]
+               outTan[_max1] = temp[_max1] - (0.25 + delta[_max]) * -inTan[_max]
                inTan[_max1] = -outTan[_max1]
            }
+           
            i = _max - 2
            while i >= 0 {
                if manualTan[i] == false {
-                   outTan[i] = temp[i] - 0.25 * outTan[i + 1] - delta[i + 1] * outTan[_max]
+                   outTan[i] = temp[i] - 0.25 * -inTan[i + 1] - delta[i + 1] * -inTan[_max]
                    inTan[i] = -outTan[i]
                }
                i -= 1
@@ -236,12 +461,13 @@ extension ManualSpline {
            i = _max1
            while i >= 0 {
                if manualTan[i] == false {
-                   outTan[i] = delta[i] - 0.25 * outTan[i + 1]
+                   outTan[i] = delta[i] - 0.25 * -inTan[i + 1]
                    inTan[i] = -outTan[i]
                }
                i -= 1
            }
        }
+       
        i = 0
        while i < _max {
            coefB[i] = outTan[i]
@@ -249,5 +475,5 @@ extension ManualSpline {
            coefD[i] = 2.0 * (coord[i] - coord[i + 1]) + outTan[i] - inTan[i + 1]
            i += 1
        }
-    }
+    }    
 }
